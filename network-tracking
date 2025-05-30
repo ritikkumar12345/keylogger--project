@@ -1,0 +1,31 @@
+import dpkt
+import socket
+import geoip2.database
+
+geo_reader = geoip2.database.Reader('GeoLite2-City.mmdb')
+
+def get_location(ip):
+    try:
+        response = geo_reader.city(ip)
+        country = response.country.name
+        city = response.city.name
+        return f"{city}, {country}"
+    except:
+        return "Unknown Location"
+
+with open('example.pcap', 'rb') as f:
+    pcap = dpkt.pcap.Reader(f)
+
+    for timestamp, buf in pcap:
+        try:
+            eth = dpkt.ethernet.Ethernet(buf)
+            if not isinstance(eth.data, dpkt.ip.IP):
+                continue
+            ip = eth.data
+            src_ip = socket.inet_ntoa(ip.src)
+            dst_ip = socket.inet_ntoa(ip.dst)
+            src_loc = get_location(src_ip)
+            dst_loc = get_location(dst_ip)
+            print(f"[{timestamp}] {src_ip} ({src_loc}) --> {dst_ip} ({dst_loc})")
+        except Exception as e:
+            continue
